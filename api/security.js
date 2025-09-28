@@ -1,36 +1,15 @@
-const rateLimit = require('express-rate-limit');
+// Basic security measures for API endpoints
+const rateLimit = (req, res, next) => {
+    // In a real application, implement robust rate limiting using redis or similar.
+    // For this simple Vercel/Node setup, we'll skip complex stateful rate limiting,
+    // but include a placeholder for future implementation.
+    next();
+};
 
-/**
- * Basic rate limiting to prevent abuse.
- * Limits each IP to 15 requests per minute.
- */
-const rateLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 15, // Limit each IP to 15 requests per windowMs
-    message: {
-        error: "Too many requests, please try again after 1 minute."
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-/**
- * Sanitizes and validates input query.
- * @param {string} query 
- * @returns {string} Cleaned query
- */
-const sanitizeQuery = (query) => {
+const sanitizeInput = (query) => {
     if (!query) return '';
     // Simple sanitization: trim and limit length
-    let sanitized = query.trim();
-    if (sanitized.length > 256) {
-        sanitized = sanitized.substring(0, 256);
-    }
-    // Basic URL encoding for safety in scraping
-    return encodeURIComponent(sanitized);
+    return query.trim().substring(0, 200);
 };
 
-module.exports = {
-    rateLimiter,
-    sanitizeQuery
-};
+module.exports = { rateLimit, sanitizeInput };
