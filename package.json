@@ -1,1 +1,29 @@
-
+{
+  "name": "zap-simple-search-engine",
+  "version": "1.0.0",
+  "description": "A simple search engine simulation using raw web searching techniques (crawling).",
+  "main": "api/server.js",
+  "scripts": {
+    "start": "node api/server.js",
+    "dev": "nodemon api/server.js"
+  },
+  "keywords": [
+    "search",
+    "engine",
+    "crawler",
+    "nodejs",
+    "express"
+  ],
+  "author": "ZapAI",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.2",
+    "cheerio": "^1.0.0-rc.12",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.3.1",
+    "helmet": "^7.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
