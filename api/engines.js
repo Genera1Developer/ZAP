@@ -1,148 +1,218 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
-const security = require('./security');
 
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 ZapAIEngine/1.0';
+// --- Configuration ---
+const MAX_DEPTH = 1; // Limit crawl depth to prevent excessive resource usage
+const MAX_RESULTS = 15;
+const TIMEOUT = 7000; // 7 second timeout per request
 
-/**
- * Performs a search using DuckDuckGo (DDG) scraping.
- * DDG is chosen as it generally has less aggressive anti-scraping measures than Google.
- * @param {string} query The search term.
- * @returns {Promise<Array<{title: string, url: string, snippet: string, charset: string}>>} Search results.
- */
-async function search(query) {
-    const sanitizedQuery = security.sanitizeQuery(query);
-    if (!sanitizedQuery) {
-        return [];
+// --- State Management (Per Search) ---
+let VISITED_URLS = new Set();
+let RESULTS = [];
+let SEARCH_QUERY = '';
+
+// --- Utility Functions ---
+
+// Simple check to prevent fetching non-HTML content types
+const isHtmlContentType = (headers) => {
+    const contentType = headers['content-type'] || '';
+    return contentType.includes('text/html') || contentType.includes('application/xhtml+xml');
+};
+
+const sanitizeUrl = (url) => {
+    try {
+        const parsedUrl = new URL(url);
+        // Only allow http/https and filter out common file extensions we don't want to crawl
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+            return null;
+        }
+        const path = parsedUrl.pathname.toLowerCase();
+        if (path.endsWith('.jpg') || path.endsWith('.png') || path.endsWith('.pdf') || path.endsWith('.css') || path.endsWith('.js')) {
+            return null;
+        }
+        // Normalize URL by removing hash and trailing slash for consistent tracking
+        parsedUrl.hash = '';
+        let href = parsedUrl.href;
+        if (href.endsWith('/')) {
+            href = href.slice(0, -1);
+        }
+        return href;
+    } catch (e) {
+        return null;
+    }
+};
+
+const extractCharset = (headers, html) => {
+    // 1. Check HTTP Content-Type header
+    const contentType = headers['content-type'];
+    if (contentType) {
+        const match = contentType.match(/charset=([^;]+)/i);
+        if (match) return match[1].toUpperCase();
     }
 
-    const searchUrl = `https://duckduckgo.com/html/?q=${sanitizedQuery}`;
+    // 2. Check HTML meta tags
+    if (html) {
+        try {
+            const $ = cheerio.load(html);
+            const metaCharset = $('meta[charset]').attr('charset');
+            if (metaCharset) return metaCharset.toUpperCase();
 
-    console.log(`Searching DDG for: ${query}`);
+            const metaHttpEquiv = $('meta[http-equiv="Content-Type"]');
+            if (metaHttpEquiv.length) {
+                const content = metaHttpEquiv.attr('content');
+                if (content) {
+                    const match = content.match(/charset=([^;]+)/i);
+                    if (match) return match[1].toUpperCase();
+                }
+            }
+        } catch (e) {
+            // Cheerio parsing error
+        }
+    }
+    return 'UNKNOWN';
+};
 
+// --- Fetching and Processing ---
+
+async function fetchPage(url) {
     try {
-        const response = await axios.get(searchUrl, {
+        const response = await axios.get(url, {
+            timeout: TIMEOUT,
+            maxRedirects: 5,
+            validateStatus: (status) => status >= 200 && status < 300,
             headers: {
-                'User-Agent': USER_AGENT,
-                'Accept-Language': 'en-US,en;q=0.9',
+                'User-Agent': 'Mozilla/5.0 (compatible; ZapSearchEngine/1.0; +https://github.com/your-repo)',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             },
-            // DDG HTML results usually return 200, but we handle potential blocks
-            timeout: 10000 
         });
 
-        if (response.status !== 200) {
-             throw new Error(`DDG search failed with status: ${response.status}`);
+        if (!isHtmlContentType(response.headers)) {
+            return null;
         }
 
-        const results = parseDDGResults(response.data);
-
-        // Fetch charset for each result (This is the "raw web searching power" requirement fulfillment)
-        const resultsWithCharset = await Promise.all(results.map(async (result) => {
-            result.charset = await getPageCharset(result.url);
-            return result;
-        }));
-
-        return resultsWithCharset;
-
+        return {
+            html: response.data,
+            headers: response.headers,
+            url: response.request.res.responseUrl || url // Get final redirected URL
+        };
     } catch (error) {
-        console.error('Error during DDG search:', error.message);
-        // Re-throw to be caught by the server route
-        throw new Error('Search scraping failed.');
+        // console.error(`Error fetching ${url}: ${error.message}`);
+        return null;
     }
 }
 
-/**
- * Parses the HTML content of the DDG search results page.
- * @param {string} html The raw HTML content.
- * @returns {Array<{title: string, url: string, snippet: string}>} Parsed results.
- */
-function parseDDGResults(html) {
+function processPage(html, url) {
     const $ = cheerio.load(html);
-    const results = [];
-
-    // DDG HTML structure often uses class 'result'
-    $('.result').each((i, element) => {
-        const $element = $(element);
+    const title = $('title').text().trim();
+    
+    // Extract description meta tag
+    let description = $('meta[name="description"]').attr('content');
+    
+    // Fallback snippet generation
+    if (!description || description.length < 50) {
+        // Try to get relevant text near the query
+        const bodyText = $('body').text();
+        const queryIndex = bodyText.toLowerCase().indexOf(SEARCH_QUERY.toLowerCase());
         
-        // Title and URL are usually in the .result__title a tag
-        const $titleLink = $element.find('.result__title a');
-        const title = $titleLink.text().trim();
-        let url = $titleLink.attr('href');
-
-        // DDG uses a redirect link, we need to extract the clean URL if possible
-        if (url && url.startsWith('/l/?kh=-1&amp;uddg=')) {
-            // Simple attempt to decode the DDG redirect format
-            try {
-                url = decodeURIComponent(url.split('&uddg=')[1].split('&')[0]);
-            } catch (e) {
-                // If decoding fails, use the raw URL or skip
-                url = null; 
-            }
+        if (queryIndex !== -1) {
+            // Extract 150 chars around the query
+            const start = Math.max(0, queryIndex - 50);
+            const end = Math.min(bodyText.length, queryIndex + 100);
+            description = bodyText.substring(start, end).trim().replace(/\s\s+/g, ' ') + '...';
+        } else {
+            // Default snippet
+            description = bodyText.substring(0, 250).trim().replace(/\s\s+/g, ' ') + '...';
         }
-        
-        // Snippet (summary)
-        const snippet = $element.find('.result__snippet').text().trim();
+    }
+    
+    // Basic Relevance Calculation
+    const queryLower = SEARCH_QUERY.toLowerCase();
+    const relevance = (title.toLowerCase().includes(queryLower) ? 5 : 0) +
+                      (description.toLowerCase().includes(queryLower) ? 3 : 0) +
+                      ($('body').text().toLowerCase().includes(queryLower) ? 1 : 0);
 
-        if (title && url && url.startsWith('http')) {
-            results.push({
-                title: title,
-                url: url,
-                snippet: snippet,
-                charset: 'N/A' // Placeholder
+    return { title, description, relevance };
+}
+
+// --- Main Search Function ---
+
+async function simpleWebSearch(query) {
+    // Reset state for new search
+    VISITED_URLS = new Set();
+    RESULTS = [];
+    SEARCH_QUERY = query;
+
+    // Seed URLs (This is the critical limitation: we must start somewhere)
+    const initialSeedUrls = [
+        'https://en.wikipedia.org/', 
+        'https://www.gutenberg.org/', 
+        'https://www.w3.org/',
+        'https://www.example.com/',
+        // A real search engine would have billions of indexed URLs here.
+    ];
+
+    let queue = initialSeedUrls.map(url => ({ url: sanitizeUrl(url), depth: 0 })).filter(item => item.url);
+
+    while (queue.length > 0 && RESULTS.length < MAX_RESULTS * 2) { // Allow buffer for filtering
+        const { url, depth } = queue.shift();
+
+        if (VISITED_URLS.has(url)) {
+            continue;
+        }
+
+        VISITED_URLS.add(url);
+        
+        const pageData = await fetchPage(url);
+
+        if (!pageData) {
+            continue;
+        }
+
+        const { html, headers, url: finalUrl } = pageData;
+        const charset = extractCharset(headers, html);
+        const { title, description, relevance } = processPage(html, finalUrl);
+
+        // A result is considered valid if it has any relevance score > 0
+        if (relevance > 0) {
+            RESULTS.push({
+                title: title || finalUrl,
+                url: finalUrl,
+                snippet: description,
+                charset: charset,
+                relevance: relevance
             });
         }
-    });
 
-    return results;
-}
+        // Add links to the queue for next depth level (only if depth limit allows)
+        if (depth < MAX_DEPTH) {
+            const $ = cheerio.load(html);
+            $('a').each((i, element) => {
+                const href = $(element).attr('href');
+                if (href) {
+                    try {
+                        const nextUrlRaw = new URL(href, finalUrl).href;
+                        const nextUrl = sanitizeUrl(nextUrlRaw);
 
-/**
- * Fetches a page and attempts to determine its character set.
- * This fulfills the requirement of displaying the "met charsets".
- * @param {string} url The URL of the page to check.
- * @returns {Promise<string>} The detected charset (e.g., 'utf-8', 'iso-8859-1').
- */
-async function getPageCharset(url) {
-    try {
-        // Fetch only the start of the page to save bandwidth and time
-        const response = await axios.get(url, {
-            headers: {
-                'User-Agent': USER_AGENT,
-            },
-            // Get only the first 4096 bytes (4KB) to check headers and meta tags
-            maxContentLength: 4096, 
-            responseType: 'arraybuffer', // Use arraybuffer to handle binary data before decoding
-            timeout: 5000
-        });
+                        if (nextUrl && !VISITED_URLS.has(nextUrl)) {
+                            // Simple domain check: only crawl links within the same domain for depth 1
+                            const currentDomain = new URL(finalUrl).hostname;
+                            const nextDomain = new URL(nextUrl).hostname;
 
-        // 1. Check HTTP Content-Type header
-        const contentType = response.headers['content-type'];
-        if (contentType && contentType.includes('charset=')) {
-            return contentType.split('charset=')[1].trim().toUpperCase();
+                            if (currentDomain === nextDomain) {
+                                // Add to the end of the queue (Breadth-first)
+                                queue.push({ url: nextUrl, depth: depth + 1 });
+                            }
+                        }
+                    } catch (e) {
+                        // Invalid link format
+                    }
+                }
+            });
         }
-
-        // 2. Check HTML Meta Tag (Need to decode the buffer first)
-        const htmlChunk = Buffer.from(response.data).toString('latin1'); // Use a safe decoding for initial check
-        const $ = cheerio.load(htmlChunk);
-        
-        const metaCharset = $('meta[charset]').attr('charset') || 
-                            $('meta[http-equiv="Content-Type"]').attr('content');
-
-        if (metaCharset && metaCharset.toLowerCase().includes('charset=')) {
-            return metaCharset.split('charset=')[1].trim().toUpperCase();
-        } else if (metaCharset && !metaCharset.includes('charset=')) {
-             // Handle <meta charset="utf-8">
-             return metaCharset.trim().toUpperCase();
-        }
-        
-        return 'UNKNOWN (Defaulting to UTF-8)';
-
-    } catch (error) {
-        // Ignore specific errors like SSL errors, timeouts, or 404s for charset fetching
-        return `ERROR: ${error.code || error.message.substring(0, 30)}`;
     }
+
+    // Sort results by relevance (descending) and return the top MAX_RESULTS
+    return RESULTS.sort((a, b) => b.relevance - a.relevance).slice(0, MAX_RESULTS);
 }
 
-module.exports = {
-    search
-};
+module.exports = { simpleWebSearch };
