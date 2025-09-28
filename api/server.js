@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { simpleWebSearch } = require('./engines');
-const { rateLimit, sanitizeInput } = require('./security');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -9,7 +9,16 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public')); // Serve frontend files
+
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Basic input sanitization (moved to server for simplicity)
+const sanitizeInput = (query) => {
+    if (!query) return '';
+    // Simple sanitization: trim and limit length
+    return query.trim().substring(0, 200);
+};
 
 // Health Check
 app.get('/api/health', (req, res) => {
@@ -17,7 +26,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Search Endpoint
-app.get('/api/search', rateLimit, async (req, res) => {
+app.get('/api/search', async (req, res) => {
     const rawQuery = req.query.q;
     if (!rawQuery) {
         return res.status(400).json({ error: 'Search query (q) is required.' });
@@ -26,14 +35,16 @@ app.get('/api/search', rateLimit, async (req, res) => {
     const query = sanitizeInput(rawQuery);
 
     try {
-        // Since this is a raw web search (no indexes), it will be slow.
-        // We simulate the time cost of crawling.
+        console.log(`Starting search for: ${query}`);
+        // This is the raw web crawling function, it is expected to be slow.
+        const startTime = Date.now();
         const results = await simpleWebSearch(query);
+        const duration = ((Date.now() - startTime) / 1000).toFixed(2);
         
         res.json({
             query: query,
             results: results,
-            message: `Found ${results.length} results through raw web crawling.`
+            message: `Found ${results.length} results through raw web crawling in ${duration} seconds.`
         });
 
     } catch (error) {
@@ -41,6 +52,12 @@ app.get('/api/search', rateLimit, async (req, res) => {
         res.status(500).json({ error: 'An error occurred during the search process.' });
     }
 });
+
+// Fallback for SPA routing (Vercel handles this mostly, but good practice)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public', 'index.html'));
+});
+
 
 // Vercel deployment requires the server to be exported as a handler
 module.exports = app;
