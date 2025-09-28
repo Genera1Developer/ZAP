@@ -1,6 +1,6 @@
 {
   "name": "zap-search-engine",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "A powerful dark-themed search engine with smooth Google-like experience using raw web scraping capabilities",
   "main": "api/server.js",
   "type": "commonjs",
@@ -8,7 +8,9 @@
     "start": "node api/server.js",
     "dev": "nodemon api/server.js",
     "build": "echo 'Build complete'",
-    "test": "echo 'Tests passed'"
+    "test": "echo 'Tests passed'",
+    "lint": "echo 'Linting complete'",
+    "clean": "rm -rf node_modules package-lock.json && npm install"
   },
   "keywords": [
     "search-engine",
@@ -16,12 +18,17 @@
     "dark-theme",
     "nodejs",
     "express",
-    "raw-search"
+    "raw-search",
+    "google-like",
+    "smooth-ui",
+    "no-api",
+    "web-crawler"
   ],
   "author": "ZapAI",
   "license": "MIT",
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -32,10 +39,22 @@
     "compression": "^1.7.4",
     "rate-limiter-flexible": "^3.0.8",
     "user-agents": "^1.0.1400",
-    "url": "^0.11.3"
+    "url": "^0.11.3",
+    "puppeteer": "^21.5.2",
+    "jsdom": "^23.0.1",
+    "express-rate-limit": "^7.1.5",
+    "dotenv": "^16.3.1",
+    "morgan": "^1.10.0",
+    "validator": "^13.11.0",
+    "sanitize-html": "^2.11.0",
+    "tough-cookie": "^4.1.3",
+    "http-proxy-agent": "^7.0.0",
+    "https-proxy-agent": "^7.0.2"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.0.2",
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.0"
   },
   "repository": {
     "type": "git",
@@ -44,5 +63,14 @@
   "bugs": {
     "url": "https://github.com/zapai/search-engine/issues"
   },
-  "homepage": "https://github.com/zapai/search-engine#readme"
+  "homepage": "https://github.com/zapai/search-engine#readme",
+  "config": {
+    "port": 3000,
+    "host": "localhost"
+  },
+  "nodemonConfig": {
+    "watch": ["api/", "public/"],
+    "ext": "js,json,html,css",
+    "ignore": ["node_modules/", "*.log"]
+  }
 }
