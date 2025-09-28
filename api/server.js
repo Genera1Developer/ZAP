@@ -1,52 +1,53 @@
 const express = require('express');
-const helmet = require('helmet');
-const path = require('path');
-const searchEngine = require('./engines');
-const security = require('./security');
+const cors = require('cors');
+const { simpleWebSearch } = require('./engines');
+const { rateLimit, sanitizeInput } = require('./security');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Security middleware
-app.use(helmet());
-app.use(security.rateLimiter);
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public')); // Serve frontend files
 
-// Serve static files from the 'public' directory
-app.use(express.static(path.join(__dirname, '..', 'public')));
+// Health Check
+app.get('/api/health', (req, res) => {
+    res.status(200).send({ status: 'ok', engine: 'ZapSearch' });
+});
 
-// API route for search
-app.get('/api/search', async (req, res) => {
-    const query = req.query.q;
-    if (!query || query.trim() === '') {
-        return res.status(400).json({ error: 'Search query is required.' });
+// Search Endpoint
+app.get('/api/search', rateLimit, async (req, res) => {
+    const rawQuery = req.query.q;
+    if (!rawQuery) {
+        return res.status(400).json({ error: 'Search query (q) is required.' });
     }
+
+    const query = sanitizeInput(rawQuery);
 
     try {
-        const results = await searchEngine.search(query);
-        res.json(results);
+        // Since this is a raw web search (no indexes), it will be slow.
+        // We simulate the time cost of crawling.
+        const results = await simpleWebSearch(query);
+        
+        res.json({
+            query: query,
+            results: results,
+            message: `Found ${results.length} results through raw web crawling.`
+        });
+
     } catch (error) {
-        console.error('Search error:', error.message);
-        // Mask specific scraping errors from the user
-        res.status(500).json({ error: 'Failed to perform search. The search mechanism might be temporarily blocked or the target structure changed.' });
+        console.error('Search error:', error);
+        res.status(500).json({ error: 'An error occurred during the search process.' });
     }
 });
 
-// Basic health check
-app.get('/api/health', (req, res) => {
-    res.status(200).send('OK');
-});
+// Vercel deployment requires the server to be exported as a handler
+module.exports = app;
 
-// Serve index.html for all other routes (SPA setup)
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
-});
-
-// Start server only if not running in Vercel environment (Vercel uses serverless functions)
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL_REGION) {
+// Local development start
+if (process.env.NODE_ENV !== 'production' && require.main === module) {
     app.listen(PORT, () => {
-        console.log(`Server listening on port ${PORT}`);
+        console.log(`Server running on http://localhost:${PORT}`);
     });
 }
-
-// Export the app for Vercel serverless function deployment
-module.exports = app;
