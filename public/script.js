@@ -2,88 +2,93 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchForm = document.getElementById('search-form');
     const searchInput = document.getElementById('search-input');
     const resultsContainer = document.getElementById('results-container');
-    const initialMessage = document.getElementById('initial-message');
+    const loadingIndicator = document.getElementById('loading');
+    const errorDisplay = document.getElementById('error-message');
 
-    searchForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    searchForm.addEventListener('submit', handleSearch);
+
+    function showLoading(show) {
+        loadingIndicator.classList.toggle('hidden', !show);
+    }
+
+    function showError(message) {
+        errorDisplay.textContent = message;
+        errorDisplay.classList.remove('hidden');
+    }
+
+    function clearResults() {
+        resultsContainer.innerHTML = '';
+        errorDisplay.classList.add('hidden');
+    }
+
+    async function handleSearch(event) {
+        event.preventDefault();
         const query = searchInput.value.trim();
-        if (query) {
-            await performSearch(query);
-        }
-    });
 
-    async function performSearch(query) {
-        resultsContainer.innerHTML = '<div class="loading">Searching...</div>';
-        if (initialMessage) initialMessage.style.display = 'none';
+        if (!query) return;
+
+        clearResults();
+        showLoading(true);
 
         try {
             const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
             const data = await response.json();
 
+            showLoading(false);
+
             if (!response.ok) {
-                resultsContainer.innerHTML = `<div class="error">Error: ${data.error || 'Unknown error occurred.'}</div>`;
+                showError(data.error || 'An unknown error occurred during search.');
                 return;
             }
 
-            renderResults(data);
+            if (data.length === 0) {
+                resultsContainer.innerHTML = '<p style="text-align: center; color: #5f6368; padding: 20px;">No results found for your query.</p>';
+            } else {
+                renderResults(data);
+            }
 
         } catch (error) {
             console.error('Fetch error:', error);
-            resultsContainer.innerHTML = '<div class="error">Failed to connect to the search server.</div>';
+            showLoading(false);
+            showError('Network error or server connection failed. Please try again.');
         }
     }
 
-    function renderResults(data) {
-        resultsContainer.innerHTML = ''; // Clear previous results
-
-        if (data.count === 0 || !data.results || data.results.length === 0) {
-            resultsContainer.innerHTML = `<p class="no-results">No results found for "${data.query}".</p>`;
-            return;
-        }
-
-        const resultsList = document.createElement('div');
-        resultsList.className = 'results-list';
-
-        data.results.forEach(result => {
+    function renderResults(results) {
+        results.forEach(result => {
             const resultItem = document.createElement('div');
             resultItem.className = 'result-item';
 
-            // Title and Link
-            const link = document.createElement('a');
-            link.href = result.url;
-            link.target = '_blank';
-            link.className = 'result-title';
-            link.textContent = result.title;
+            // Title
+            const title = document.createElement('h3');
+            title.className = 'result-title';
+            const titleLink = document.createElement('a');
+            titleLink.href = result.url;
+            titleLink.target = '_blank';
+            titleLink.textContent = result.title;
+            title.appendChild(titleLink);
 
-            // URL display
-            const urlDisplay = document.createElement('p');
-            urlDisplay.className = 'result-url';
-            urlDisplay.textContent = result.url;
+            // URL
+            const url = document.createElement('cite');
+            url.className = 'result-url';
+            url.textContent = result.url;
 
             // Snippet
             const snippet = document.createElement('p');
             snippet.className = 'result-snippet';
             snippet.textContent = result.snippet;
 
-            // Charset requirement display
-            const charset = document.createElement('p');
+            // Charset (Required by user)
+            const charset = document.createElement('span');
             charset.className = 'result-charset';
-            charset.innerHTML = `Charset: <span>${result.charset}</span>`;
+            charset.textContent = `Charset: ${result.charset}`;
 
-
-            resultItem.appendChild(link);
-            resultItem.appendChild(urlDisplay);
+            resultItem.appendChild(title);
+            resultItem.appendChild(url);
             resultItem.appendChild(snippet);
             resultItem.appendChild(charset);
 
-            resultsList.appendChild(resultItem);
+            resultsContainer.appendChild(resultItem);
         });
-
-        const summary = document.createElement('p');
-        summary.className = 'results-summary';
-        summary.textContent = `Found ${data.count} results for "${data.query}".`;
-        
-        resultsContainer.appendChild(summary);
-        resultsContainer.appendChild(resultsList);
     }
 });
