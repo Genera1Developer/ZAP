@@ -1,110 +1,148 @@
-import fetch from 'node-fetch';
-import * as cheerio from 'cheerio';
+const axios = require('axios');
+const cheerio = require('cheerio');
+const security = require('./security');
 
-// This module simulates "raw web searching" by scraping results from a public, non-API search engine (e.g., DuckDuckGo).
-// Note: Scraping is fragile and against most TOS. This is purely for demonstration/educational purposes as per the user's request for "raw web searching power" without official APIs.
-
-const DUCKDUCKGO_URL = (query) => 
-  `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 ZapAIEngine/1.0';
 
 /**
- * Executes a search query by scraping DuckDuckGo HTML results.
+ * Performs a search using DuckDuckGo (DDG) scraping.
+ * DDG is chosen as it generally has less aggressive anti-scraping measures than Google.
  * @param {string} query The search term.
- * @returns {Promise<Array<{title: string, url: string, snippet: string, charset: string}>>}
+ * @returns {Promise<Array<{title: string, url: string, snippet: string, charset: string}>>} Search results.
  */
-export async function searchWeb(query) {
-  if (!query) {
-    return [];
-  }
-
-  console.log(`Searching for: ${query}`);
-
-  try {
-    const response = await fetch(DUCKDUCKGO_URL(query));
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch search results: ${response.statusText}`);
+async function search(query) {
+    const sanitizedQuery = security.sanitizeQuery(query);
+    if (!sanitizedQuery) {
+        return [];
     }
 
-    const html = await response.text();
+    const searchUrl = `https://duckduckgo.com/html/?q=${sanitizedQuery}`;
+
+    console.log(`Searching DDG for: ${query}`);
+
+    try {
+        const response = await axios.get(searchUrl, {
+            headers: {
+                'User-Agent': USER_AGENT,
+                'Accept-Language': 'en-US,en;q=0.9',
+            },
+            // DDG HTML results usually return 200, but we handle potential blocks
+            timeout: 10000 
+        });
+
+        if (response.status !== 200) {
+             throw new Error(`DDG search failed with status: ${response.status}`);
+        }
+
+        const results = parseDDGResults(response.data);
+
+        // Fetch charset for each result (This is the "raw web searching power" requirement fulfillment)
+        const resultsWithCharset = await Promise.all(results.map(async (result) => {
+            result.charset = await getPageCharset(result.url);
+            return result;
+        }));
+
+        return resultsWithCharset;
+
+    } catch (error) {
+        console.error('Error during DDG search:', error.message);
+        // Re-throw to be caught by the server route
+        throw new Error('Search scraping failed.');
+    }
+}
+
+/**
+ * Parses the HTML content of the DDG search results page.
+ * @param {string} html The raw HTML content.
+ * @returns {Array<{title: string, url: string, snippet: string}>} Parsed results.
+ */
+function parseDDGResults(html) {
     const $ = cheerio.load(html);
-    
     const results = [];
 
-    // DuckDuckGo HTML structure scraping (might change over time)
+    // DDG HTML structure often uses class 'result'
     $('.result').each((i, element) => {
-      const titleElement = $(element).find('.result__title a');
-      const snippetElement = $(element).find('.result__snippet');
-      const urlElement = $(element).find('.result__url');
+        const $element = $(element);
+        
+        // Title and URL are usually in the .result__title a tag
+        const $titleLink = $element.find('.result__title a');
+        const title = $titleLink.text().trim();
+        let url = $titleLink.attr('href');
 
-      const title = titleElement.text().trim();
-      const url = urlElement.text().trim(); // DuckDuckGo often displays the URL in a separate element
-      const snippet = snippetElement.text().trim();
+        // DDG uses a redirect link, we need to extract the clean URL if possible
+        if (url && url.startsWith('/l/?kh=-1&amp;uddg=')) {
+            // Simple attempt to decode the DDG redirect format
+            try {
+                url = decodeURIComponent(url.split('&uddg=')[1].split('&')[0]);
+            } catch (e) {
+                // If decoding fails, use the raw URL or skip
+                url = null; 
+            }
+        }
+        
+        // Snippet (summary)
+        const snippet = $element.find('.result__snippet').text().trim();
 
-      if (title && url) {
-        results.push({
-          title,
-          url: url.startsWith('http') ? url : `https://${url}`, // Ensure URL is proper
-          snippet,
-          charset: 'N/A (Scraped)', // Charset determination requires fetching the final result page, which is too intensive for a simple engine. We mark it as N/A here.
-        });
-      }
+        if (title && url && url.startsWith('http')) {
+            results.push({
+                title: title,
+                url: url,
+                snippet: snippet,
+                charset: 'N/A' // Placeholder
+            });
+        }
     });
 
-    // To fulfill the charset requirement, we would ideally fetch the actual result URL and inspect the meta tags, but due to performance constraints and complexity, we mock it or set it to N/A.
-    // For a slight improvement, let's randomly assign a common charset to simulate the data.
-    const charsets = ['UTF-8', 'ISO-8859-1', 'Windows-1252'];
-    return results.map(result => ({
-        ...result,
-        charset: charsets[Math.floor(Math.random() * charsets.length)]
-    }));
-
-
-  } catch (error) {
-    console.error('Error during web search:', error);
-    // Return a mock result if scraping fails
-    return [{
-        title: "Error: Search Failed",
-        url: "#",
-        snippet: `Could not connect to search engine or scraper failed. Error: ${error.message}`,
-        charset: "N/A"
-    }];
-  }
+    return results;
 }
 
 /**
- * Fetches the charset of a given URL by inspecting meta tags.
- * NOTE: This function is currently unused due to performance concerns in searchWeb, 
- * but serves as the theoretical implementation for the charset requirement.
- * 
- * @param {string} url 
- * @returns {Promise<string>}
+ * Fetches a page and attempts to determine its character set.
+ * This fulfills the requirement of displaying the "met charsets".
+ * @param {string} url The URL of the page to check.
+ * @returns {Promise<string>} The detected charset (e.g., 'utf-8', 'iso-8859-1').
  */
-/*
-async function getCharset(url) {
+async function getPageCharset(url) {
     try {
-        const response = await fetch(url, { timeout: 3000 }); // Short timeout
-        const html = await response.text();
-        const $ = cheerio.load(html);
-
-        // 1. Check HTTP Content-Type header (not available here, we'd need to inspect headers)
-        
-        // 2. Check <meta charset="...">
-        let charset = $('meta[charset]').attr('charset');
-        if (charset) return charset.toUpperCase();
-
-        // 3. Check <meta http-equiv="Content-Type" content="text/html; charset=...">
-        $('meta[http-equiv="Content-Type"]').each((i, element) => {
-            const content = $(element).attr('content');
-            if (content && content.includes('charset=')) {
-                charset = content.split('charset=')[1].trim().toUpperCase();
-                return false; // break loop
-            }
+        // Fetch only the start of the page to save bandwidth and time
+        const response = await axios.get(url, {
+            headers: {
+                'User-Agent': USER_AGENT,
+            },
+            // Get only the first 4096 bytes (4KB) to check headers and meta tags
+            maxContentLength: 4096, 
+            responseType: 'arraybuffer', // Use arraybuffer to handle binary data before decoding
+            timeout: 5000
         });
 
-        return charset || 'Unknown';
-    } catch (e) {
-        return 'Failed to retrieve';
+        // 1. Check HTTP Content-Type header
+        const contentType = response.headers['content-type'];
+        if (contentType && contentType.includes('charset=')) {
+            return contentType.split('charset=')[1].trim().toUpperCase();
+        }
+
+        // 2. Check HTML Meta Tag (Need to decode the buffer first)
+        const htmlChunk = Buffer.from(response.data).toString('latin1'); // Use a safe decoding for initial check
+        const $ = cheerio.load(htmlChunk);
+        
+        const metaCharset = $('meta[charset]').attr('charset') || 
+                            $('meta[http-equiv="Content-Type"]').attr('content');
+
+        if (metaCharset && metaCharset.toLowerCase().includes('charset=')) {
+            return metaCharset.split('charset=')[1].trim().toUpperCase();
+        } else if (metaCharset && !metaCharset.includes('charset=')) {
+             // Handle <meta charset="utf-8">
+             return metaCharset.trim().toUpperCase();
+        }
+        
+        return 'UNKNOWN (Defaulting to UTF-8)';
+
+    } catch (error) {
+        // Ignore specific errors like SSL errors, timeouts, or 404s for charset fetching
+        return `ERROR: ${error.code || error.message.substring(0, 30)}`;
     }
 }
-*/
+
+module.exports = {
+    search
+};
