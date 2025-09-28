@@ -1,53 +1,36 @@
-import { URL } from 'url';
+const rateLimit = require('express-rate-limit');
 
 /**
- * Simple input sanitization for search queries.
- * Prevents common injection attempts (though less critical for a search query).
- * @param {string} query The raw search query.
- * @returns {string} The sanitized query.
+ * Basic rate limiting to prevent abuse.
+ * Limits each IP to 15 requests per minute.
  */
-export function sanitizeQuery(query) {
-  if (typeof query !== 'string') {
-    return '';
-  }
-  
-  // Basic trimming and removal of non-standard control characters
-  let safeQuery = query.trim();
-  
-  // URL encode the query (handled by the engine, but good practice here too)
-  // safeQuery = encodeURIComponent(safeQuery);
-  
-  // Remove script tags or HTML entities if somehow passed
-  safeQuery = safeQuery.replace(/<[^>]*>?/gm, '');
-  
-  return safeQuery;
-}
+const rateLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 15, // Limit each IP to 15 requests per windowMs
+    message: {
+        error: "Too many requests, please try again after 1 minute."
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
 /**
- * Basic rate limiting middleware (placeholder).
- * @param {object} req 
- * @param {object} res 
- * @param {function} next 
+ * Sanitizes and validates input query.
+ * @param {string} query 
+ * @returns {string} Cleaned query
  */
-export function rateLimiter(req, res, next) {
-    // In a real application, this would track IPs and request counts.
-    // For now, it's a simple placeholder.
-    next();
-}
-
-/**
- * CORS handling middleware (necessary for development/deployment).
- * @param {object} req 
- * @param {object} res 
- * @param {function} next 
- */
-export function corsHandler(req, res, next) {
-    res.header('Access-Control-Allow-Origin', '*'); // Allow all origins for simplicity
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
+const sanitizeQuery = (query) => {
+    if (!query) return '';
+    // Simple sanitization: trim and limit length
+    let sanitized = query.trim();
+    if (sanitized.length > 256) {
+        sanitized = sanitized.substring(0, 256);
     }
-    next();
-}
+    // Basic URL encoding for safety in scraping
+    return encodeURIComponent(sanitized);
+};
+
+module.exports = {
+    rateLimiter,
+    sanitizeQuery
+};
