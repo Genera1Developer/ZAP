@@ -3,29 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZapSearch - Raw Web Engine</title>
+    <title>ZapAI Search Engine</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>ZapSearch</h1>
-            <p>Raw Web Searching Power (No APIs)</p>
+            <h1>ZapAI Search</h1>
         </header>
+        
+        <div class="search-box">
+            <form id="search-form">
+                <input type="text" id="search-input" placeholder="Search the web..." required>
+                <button type="submit">Search</button>
+            </form>
+        </div>
 
-        <form id="search-form">
-            <input type="text" id="search-input" placeholder="Enter your search query..." required>
-            <button type="submit">Search</button>
-        </form>
-
-        <div id="loading" class="hidden">Searching the raw web... This might take a moment as we crawl.</div>
-
+        <div id="loading" class="hidden">Searching...</div>
+        
         <div id="results-container">
             <!-- Search results will be injected here -->
         </div>
 
-        <div id="message-area" class="hidden"></div>
+        <div id="error-message" class="hidden"></div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
