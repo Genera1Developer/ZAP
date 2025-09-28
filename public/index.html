@@ -1,1 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zap Search Engine</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Zap Search</h1>
+        <form id="search-form">
+            <input type="text" id="search-input" placeholder="Search the web..." required>
+            <button type="submit">Search</button>
+        </form>
+    </header>
 
+    <main>
+        <div id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Searching the deep web...</p>
+        </div>
+        <div id="results">
+            <!-- Results will be injected here -->
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 ZapAI Search Engine. Raw web searching power.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
