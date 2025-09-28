@@ -3,33 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZapAI Simple Search</title>
+    <title>ZapAI Simple Search Engine</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
         <header>
             <h1>ZapAI Search</h1>
-            <form id="search-form" class="search-bar">
-                <input type="text" id="search-input" placeholder="Enter query (e.g., example.com or specific URL)" required>
+            <form id="search-form">
+                <input type="text" id="search-input" placeholder="Search the web..." required>
                 <button type="submit">Search</button>
             </form>
         </header>
 
         <main id="results-container">
-            <!-- Search results will be injected here -->
-            <p class="initial-message">Enter a domain or a full URL to simulate a search result fetch.</p>
+            <!-- Results will be injected here -->
+            <p id="initial-message">Enter a query and hit search to see results.</p>
         </main>
 
-        <div id="loading" class="hidden">
-            <div class="spinner"></div>
-            <p>Searching the web...</p>
-        </div>
-
-        <div id="error-message" class="error hidden"></div>
+        <footer>
+            <p>&copy; 2024 ZapAI Simple Search Engine</p>
+        </footer>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
