@@ -3,43 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZapAI Raw Web Search</title>
+    <title>ZapSearch - Raw Web Engine</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1 class="logo">ZapAI Raw Search</h1>
-            <p class="tagline">Direct web searching power. No external APIs.</p>
+            <h1>ZapSearch</h1>
+            <p>Raw Web Searching Power (No APIs)</p>
         </header>
 
-        <main>
-            <form id="search-form" class="search-box">
-                <input type="text" id="search-input" placeholder="Search the web (e.g., 'best programming language')" required>
-                <button type="submit" id="search-button">
-                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                </button>
-            </form>
+        <form id="search-form">
+            <input type="text" id="search-input" placeholder="Enter your search query..." required>
+            <button type="submit">Search</button>
+        </form>
 
-            <div id="status-container">
-                <div id="loading" class="status-message hidden">
-                    <div class="spinner"></div>
-                    Searching the raw web... This might take a moment.
-                </div>
-                <div id="error-message" class="status-message error hidden"></div>
-            </div>
-            
-            <section id="results-container" class="results-container">
-                <!-- Search results will be injected here -->
-            </section>
-        </main>
+        <div id="loading" class="hidden">Searching the raw web... This might take a moment as we crawl.</div>
+
+        <div id="results-container">
+            <!-- Search results will be injected here -->
+        </div>
+
+        <div id="message-area" class="hidden"></div>
     </div>
-
-    <footer>
-        <p>A demonstration of raw web scraping and search engine simulation by ZapAI.</p>
-    </footer>
-
     <script src="script.js"></script>
 </body>
 </html>
