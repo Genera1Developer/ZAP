@@ -3,28 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZapAI Simple Search Engine</title>
+    <title>ZapAI Search Engine</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
 </head>
 <body>
     <div class="container">
         <header>
             <h1>ZapAI Search</h1>
-            <form id="search-form">
-                <input type="text" id="search-input" placeholder="Search the web..." required>
-                <button type="submit">Search</button>
-            </form>
+            <p>Raw web searching power, no external APIs.</p>
         </header>
 
-        <main id="results-container">
-            <!-- Results will be injected here -->
-            <p id="initial-message">Enter a query and hit search to see results.</p>
-        </main>
+        <form id="search-form">
+            <input type="text" id="search-input" placeholder="Enter your search query..." required>
+            <button type="submit">Search</button>
+        </form>
 
-        <footer>
-            <p>&copy; 2024 ZapAI Simple Search Engine</p>
-        </footer>
+        <div id="loading" class="hidden">Searching the raw web...</div>
+        <div id="error-message" class="error hidden"></div>
+        
+        <section id="results-container">
+            <!-- Search results will be injected here -->
+        </section>
     </div>
+
+    <footer>
+        <p>&copy; 2024 ZapAI Engine Simulation</p>
+    </footer>
+
     <script src="script.js"></script>
 </body>
 </html>
