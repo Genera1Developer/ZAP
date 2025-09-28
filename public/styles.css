@@ -1,7 +1,6 @@
-/* Global Styles */
 body {
-    font-family: 'Roboto', sans-serif;
-    background-color: #f8f9fa;
+    font-family: Arial, sans-serif;
+    background-color: #f8f8f8;
     color: #202124;
     margin: 0;
     padding: 0;
@@ -11,79 +10,91 @@ body {
 }
 
 .container {
-    width: 100%;
+    width: 90%;
     max-width: 800px;
     padding: 20px;
 }
 
-/* Header and Search Bar */
 header {
-    text-align: center;
-    margin-bottom: 30px;
-    padding-top: 20px;
-}
-
-header h1 {
-    font-size: 40px;
-    font-weight: 300;
-    color: #4285f4; /* Google Blue */
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     margin-bottom: 20px;
 }
 
-.search-bar {
+h1 {
+    text-align: center;
+    color: #4285f4;
+    margin-top: 0;
+}
+
+#search-form {
     display: flex;
-    justify-content: center;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    border-radius: 24px;
-    overflow: hidden;
-    background-color: white;
+    gap: 10px;
+    margin-top: 15px;
 }
 
 #search-input {
     flex-grow: 1;
-    padding: 12px 20px;
-    border: none;
+    padding: 10px 15px;
+    border: 1px solid #dfe1e5;
+    border-radius: 24px;
     font-size: 16px;
     outline: none;
+    box-shadow: 0 1px 1px rgba(0,0,0,.1);
 }
 
-.search-bar button {
+#search-input:focus {
+    border-color: #4285f4;
+    box-shadow: 0 1px 6px rgba(32,33,36,0.28);
+}
+
+button[type="submit"] {
+    padding: 10px 20px;
     background-color: #4285f4;
     color: white;
     border: none;
-    padding: 12px 25px;
+    border-radius: 24px;
     cursor: pointer;
     font-size: 16px;
     transition: background-color 0.3s;
 }
 
-.search-bar button:hover {
+button[type="submit"]:hover {
     background-color: #357ae8;
 }
 
-/* Main Results Area */
+/* Results Area */
 #results-container {
     padding: 20px 0;
 }
 
-.initial-message, .no-results {
-    text-align: center;
-    color: #70757a;
-    margin-top: 50px;
+.results-summary {
+    color: #5f6368;
+    margin-bottom: 15px;
+    font-size: 0.9em;
 }
 
-.search-result {
-    margin-bottom: 30px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #eee;
+.result-item {
+    background-color: #ffffff;
+    border: 1px solid #dadce0;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    transition: box-shadow 0.2s;
+}
+
+.result-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .result-title {
-    font-size: 20px;
-    color: #1a0dab; /* Link Blue */
+    font-size: 1.2em;
+    color: #1a0dab;
     text-decoration: none;
-    margin-bottom: 4px;
     display: block;
+    margin-bottom: 5px;
 }
 
 .result-title:hover {
@@ -91,67 +102,38 @@ header h1 {
 }
 
 .result-url {
-    font-size: 14px;
-    color: #006621; /* URL Green */
-    margin-top: 0;
-    margin-bottom: 6px;
+    font-size: 0.9em;
+    color: #006621;
+    margin-bottom: 5px;
 }
 
-.result-description {
-    font-size: 14px;
-    line-height: 1.5;
+.result-snippet {
+    font-size: 0.95em;
     color: #545454;
-    margin: 0;
-}
-
-.result-meta {
-    margin-top: 8px;
-}
-
-.meta-tag {
-    display: inline-block;
-    background-color: #e8f0fe;
-    color: #1a0dab;
-    font-size: 12px;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-weight: 500;
-}
-
-/* Loading Indicator */
-.hidden {
-    display: none !important;
-}
-
-#loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-top: 50px;
-}
-
-.spinner {
-    border: 4px solid rgba(0, 0, 0, 0.1);
-    border-top: 4px solid #4285f4;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    animation: spin 1s linear infinite;
     margin-bottom: 10px;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.result-charset {
+    font-size: 0.8em;
+    color: #70757a;
 }
 
-/* Error Message */
-.error {
-    background-color: #fdd;
-    border: 1px solid #f00;
-    color: #a00;
-    padding: 10px;
-    margin-top: 20px;
-    border-radius: 4px;
+.result-charset span {
+    font-weight: bold;
+    color: #a00000;
+}
+
+.loading, .error, .no-results, #initial-message {
     text-align: center;
+    padding: 20px;
+    color: #5f6368;
+}
+
+footer {
+    text-align: center;
+    padding: 20px;
+    margin-top: 30px;
+    font-size: 0.8em;
+    color: #70757a;
+    border-top: 1px solid #eee;
 }
