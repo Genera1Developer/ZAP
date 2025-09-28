@@ -1,73 +1,98 @@
+// public/script.js
+
 document.addEventListener('DOMContentLoaded', () => {
     const searchForm = document.getElementById('search-form');
     const searchInput = document.getElementById('search-input');
     const resultsContainer = document.getElementById('results-container');
     const loadingIndicator = document.getElementById('loading');
-    const messageArea = document.getElementById('message-area');
+    const errorMessage = document.getElementById('error-message');
 
-    // Determine API URL based on environment
-    const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-        ? 'http://localhost:3000/api/search' 
-        : '/api/search';
+    searchForm.addEventListener('submit', handleSearch);
 
-    searchForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    function showLoading(show) {
+        loadingIndicator.classList.toggle('hidden', !show);
+    }
+
+    function showError(message) {
+        errorMessage.textContent = message;
+        errorMessage.classList.remove('hidden');
+    }
+
+    function clearResults() {
+        resultsContainer.innerHTML = '';
+        errorMessage.classList.add('hidden');
+    }
+
+    async function handleSearch(event) {
+        event.preventDefault();
         const query = searchInput.value.trim();
 
-        if (!query) return;
+        if (!query) {
+            showError('Please enter a search query.');
+            return;
+        }
 
-        resultsContainer.innerHTML = '';
-        messageArea.classList.add('hidden');
-        loadingIndicator.classList.remove('hidden');
+        clearResults();
+        showLoading(true);
 
         try {
-            const response = await fetch(`${API_URL}?q=${encodeURIComponent(query)}`);
+            const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
             const data = await response.json();
 
-            loadingIndicator.classList.add('hidden');
-            
-            if (data.error) {
-                messageArea.textContent = `Error: ${data.error}`;
-                messageArea.classList.remove('hidden');
-                return;
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to fetch results.');
             }
 
-            if (data.results && data.results.length > 0) {
-                data.results.forEach(result => {
-                    const resultElement = createResultElement(result);
-                    resultsContainer.appendChild(resultElement);
-                });
-            } else {
-                messageArea.textContent = "No results found. Try a different query. Remember, this is a very basic crawler!";
-                messageArea.classList.remove('hidden');
-            }
+            displayResults(data.results);
 
         } catch (error) {
-            console.error('Fetch error:', error);
-            loadingIndicator.classList.add('hidden');
-            messageArea.textContent = 'A connection error occurred while trying to reach the search engine.';
-            messageArea.classList.remove('hidden');
+            console.error('Search failed:', error);
+            showError(`Search failed: ${error.message}`);
+        } finally {
+            showLoading(false);
         }
-    });
+    }
 
-    function createResultElement(result) {
-        const div = document.createElement('div');
-        div.className = 'search-result';
+    function displayResults(results) {
+        if (results.length === 0) {
+            resultsContainer.innerHTML = '<p>No results found for your query. Try something else!</p>';
+            return;
+        }
 
-        const urlPath = new URL(result.url).hostname + new URL(result.url).pathname;
+        results.forEach(result => {
+            const item = document.createElement('div');
+            item.className = 'result-item';
 
-        div.innerHTML = `
-            <div class="result-url">
-                <a href="${result.url}" target="_blank">${urlPath}</a>
-            </div>
-            <h3 class="result-title">
-                <a href="${result.url}" target="_blank">${result.title}</a>
-            </h3>
-            <p class="result-snippet">${result.snippet}</p>
-            <p class="result-meta">
-                Charset: <strong>${result.charset || 'N/A'}</strong> | Relevance Score: ${result.relevance}
-            </p>
-        `;
-        return div;
+            // URL
+            const urlDiv = document.createElement('div');
+            urlDiv.className = 'result-url';
+            urlDiv.textContent = result.url;
+            
+            // Title
+            const titleDiv = document.createElement('h3');
+            titleDiv.className = 'result-title';
+            const titleLink = document.createElement('a');
+            titleLink.href = result.url;
+            titleLink.target = '_blank';
+            titleLink.textContent = result.title;
+            titleDiv.appendChild(titleLink);
+
+            // Description
+            const descriptionDiv = document.createElement('p');
+            descriptionDiv.className = 'result-description';
+            descriptionDiv.textContent = result.description;
+
+            // Meta (Charset)
+            const metaDiv = document.createElement('p');
+            metaDiv.className = 'result-meta';
+            metaDiv.textContent = `Charset: ${result.charset}`;
+
+            item.appendChild(urlDiv);
+            item.appendChild(titleDiv);
+            item.appendChild(descriptionDiv);
+            item.appendChild(metaDiv);
+
+            resultsContainer.appendChild(item);
+        });
     }
 });
