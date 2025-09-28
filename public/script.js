@@ -1,111 +1,64 @@
-const searchForm = document.getElementById('search-form');
-const searchInput = document.getElementById('search-input');
-const resultsDiv = document.getElementById('results');
-const loadingDiv = document.getElementById('loading');
+document.addEventListener('DOMContentLoaded', () => {
+    const searchForm = document.getElementById('search-form');
+    const searchInput = document.getElementById('search-input');
+    const resultsContainer = document.getElementById('results-container');
+    const loadingIndicator = document.getElementById('loading');
+    const errorMessage = document.getElementById('error-message');
 
-const API_ENDPOINT = '/api/search';
+    searchForm.addEventListener('submit', handleSearch);
 
-/**
- * Displays an error message to the user.
- * @param {string} message The error message.
- */
-function displayError(message) {
-    resultsDiv.innerHTML = `<div class="error-message">Error: ${message}</div>`;
-    loadingDiv.style.display = 'none';
-}
+    async function handleSearch(event) {
+        event.preventDefault();
+        const query = searchInput.value.trim();
 
-/**
- * Displays the search results.
- * @param {Array<Object>} results An array of result objects.
- */
-function displayResults(results) {
-    resultsDiv.innerHTML = '';
-    loadingDiv.style.display = 'none';
+        if (!query) return;
 
-    if (!results || results.length === 0) {
-        resultsDiv.innerHTML = '<p>No results found. Try a different query.</p>';
-        return;
-    }
-
-    const resultsList = document.createElement('div');
-    resultsList.className = 'results-list';
-
-    results.forEach(result => {
-        const resultItem = document.createElement('div');
-        resultItem.className = 'result-item';
-
-        const title = document.createElement('h3');
-        const link = document.createElement('a');
-        link.href = result.url;
-        link.target = '_blank';
-        link.textContent = result.title || 'Untitled Page';
-        title.appendChild(link);
-        resultItem.appendChild(title);
-
-        const urlP = document.createElement('p');
-        urlP.className = 'result-url';
-        urlP.textContent = result.url;
-        resultItem.appendChild(urlP);
-
-        const snippetP = document.createElement('p');
-        snippetP.className = 'result-snippet';
-        snippetP.textContent = result.snippet || 'No summary available.';
-        resultItem.appendChild(snippetP);
-
-        if (result.charset) {
-            const charsetP = document.createElement('p');
-            charsetP.className = 'result-charset';
-            charsetP.textContent = `Charset: ${result.charset}`;
-            resultItem.appendChild(charsetP);
-        }
-
-        resultsList.appendChild(resultItem);
-    });
-
-    resultsDiv.appendChild(resultsList);
-}
-
-/**
- * Handles the search form submission.
- * @param {Event} e The submit event.
- */
-async function handleSearch(e) {
-    e.preventDefault();
-    const query = searchInput.value.trim();
-
-    if (!query) {
-        displayError('Please enter a search query.');
-        return;
-    }
-
-    // Clear previous results and show loading indicator
-    resultsDiv.innerHTML = '';
-    loadingDiv.style.display = 'block';
-
-    try {
-        const response = await fetch(`${API_ENDPOINT}?q=${encodeURIComponent(query)}`);
+        resultsContainer.innerHTML = '';
+        errorMessage.classList.add('hidden');
+        loadingIndicator.classList.remove('hidden');
         
-        if (!response.ok) {
-            throw new Error(`Server returned status ${response.status}`);
-        }
+        // Remove initial message
+        const initialMessage = document.querySelector('.initial-message');
+        if (initialMessage) initialMessage.remove();
 
-        const data = await response.json();
+        try {
+            const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
 
-        if (data.error) {
-            displayError(data.error);
-        } else {
+            if (!response.ok || data.error) {
+                throw new Error(data.error || 'Failed to fetch search results.');
+            }
+
             displayResults(data.results);
+
+        } catch (error) {
+            console.error('Search error:', error);
+            errorMessage.textContent = `Search failed: ${error.message}. Note: The engine only simulates fetching content from direct URLs or domains due to constraints.`;
+            errorMessage.classList.remove('hidden');
+        } finally {
+            loadingIndicator.classList.add('hidden');
+        }
+    }
+
+    function displayResults(results) {
+        if (results.length === 0) {
+            resultsContainer.innerHTML = '<p class="no-results">No results found for your query. Try entering a valid domain (e.g., wikipedia.org).</p>';
+            return;
         }
 
-    } catch (error) {
-        console.error('Fetch error:', error);
-        displayError(`Failed to connect to search engine: ${error.message}`);
+        results.forEach(result => {
+            const resultDiv = document.createElement('div');
+            resultDiv.classList.add('search-result');
+            
+            resultDiv.innerHTML = `
+                <a href="${result.url}" target="_blank" class="result-title">${result.title}</a>
+                <p class="result-url">${result.url}</p>
+                <p class="result-description">${result.description}</p>
+                <div class="result-meta">
+                    <span class="meta-tag">Charset: ${result.charset || 'N/A'}</span>
+                </div>
+            `;
+            resultsContainer.appendChild(resultDiv);
+        });
     }
-}
-
-searchForm.addEventListener('submit', handleSearch);
-
-// Initial focus
-window.onload = () => {
-    searchInput.focus();
-};
+});
