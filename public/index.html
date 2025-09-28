@@ -3,31 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zap Search Engine</title>
+    <title>ZapAI Simple Search</title>
     <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <header>
-        <h1>Zap Search</h1>
-        <form id="search-form">
-            <input type="text" id="search-input" placeholder="Search the web..." required>
-            <button type="submit">Search</button>
-        </form>
-    </header>
+    <div class="container">
+        <header>
+            <h1>ZapAI Search</h1>
+            <form id="search-form" class="search-bar">
+                <input type="text" id="search-input" placeholder="Enter query (e.g., example.com or specific URL)" required>
+                <button type="submit">Search</button>
+            </form>
+        </header>
 
-    <main>
-        <div id="loading" style="display: none;">
+        <main id="results-container">
+            <!-- Search results will be injected here -->
+            <p class="initial-message">Enter a domain or a full URL to simulate a search result fetch.</p>
+        </main>
+
+        <div id="loading" class="hidden">
             <div class="spinner"></div>
-            <p>Searching the deep web...</p>
+            <p>Searching the web...</p>
         </div>
-        <div id="results">
-            <!-- Results will be injected here -->
-        </div>
-    </main>
 
-    <footer>
-        <p>&copy; 2024 ZapAI Search Engine. Raw web searching power.</p>
-    </footer>
+        <div id="error-message" class="error hidden"></div>
+    </div>
 
     <script src="script.js"></script>
 </body>
