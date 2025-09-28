@@ -1,70 +1,51 @@
+// api/server.js
 const express = require('express');
-const cors = require('cors');
+const { searchWeb } = require('./engines');
+const { sanitizeQuery, checkRateLimit } = require('./security');
 const path = require('path');
-const { simpleWebSearch } = require('./engines');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Serve static files from the public directory
+// Middleware for serving static files (for local testing/development)
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Basic input sanitization (moved to server for simplicity)
-const sanitizeInput = (query) => {
-    if (!query) return '';
-    // Simple sanitization: trim and limit length
-    return query.trim().substring(0, 200);
-};
-
-// Health Check
-app.get('/api/health', (req, res) => {
-    res.status(200).send({ status: 'ok', engine: 'ZapSearch' });
+// Basic rate limiting middleware
+app.use((req, res, next) => {
+    if (!checkRateLimit(req)) {
+        return res.status(429).send({ error: 'Too many requests. Please try again later.' });
+    }
+    next();
 });
 
-// Search Endpoint
+// Search endpoint
 app.get('/api/search', async (req, res) => {
     const rawQuery = req.query.q;
+
     if (!rawQuery) {
-        return res.status(400).json({ error: 'Search query (q) is required.' });
+        return res.status(400).json({ error: 'Query parameter "q" is required.' });
     }
 
-    const query = sanitizeInput(rawQuery);
+    const query = sanitizeQuery(rawQuery);
 
     try {
-        console.log(`Starting search for: ${query}`);
-        // This is the raw web crawling function, it is expected to be slow.
-        const startTime = Date.now();
-        const results = await simpleWebSearch(query);
-        const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-        
-        res.json({
-            query: query,
-            results: results,
-            message: `Found ${results.length} results through raw web crawling in ${duration} seconds.`
-        });
-
+        // Note: The searchWeb function is where the core logic resides,
+        // simulating "raw web searching power" by fetching and parsing URLs.
+        const results = await searchWeb(query);
+        res.json({ query: rawQuery, results });
     } catch (error) {
-        console.error('Search error:', error);
-        res.status(500).json({ error: 'An error occurred during the search process.' });
+        console.error('Search error:', error.message);
+        // Send a generic error message to the client
+        res.status(500).json({ error: 'An error occurred during the search operation.' });
     }
 });
 
-// Fallback for SPA routing (Vercel handles this mostly, but good practice)
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public', 'index.html'));
-});
-
-
-// Vercel deployment requires the server to be exported as a handler
+// Vercel serverless function export
 module.exports = app;
 
-// Local development start
-if (process.env.NODE_ENV !== 'production' && require.main === module) {
+// For local development
+if (process.env.NODE_ENV !== 'production' && process.env.VERCEL !== '1') {
     app.listen(PORT, () => {
-        console.log(`Server running on http://localhost:${PORT}`);
+        console.log(`Server listening on port ${PORT}`);
     });
 }
