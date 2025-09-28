@@ -1,18 +1,20 @@
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-    background-color: #f8f9fa;
+    font-family: Arial, sans-serif;
+    background-color: #f8f8f8;
     color: #202124;
     margin: 0;
-    padding: 20px;
+    padding: 0;
     display: flex;
     justify-content: center;
     min-height: 100vh;
 }
 
 .container {
-    max-width: 800px;
     width: 100%;
+    max-width: 700px;
     padding: 20px;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 header {
@@ -21,24 +23,23 @@ header {
 }
 
 header h1 {
-    color: #4285f4;
-    font-size: 36px;
+    color: #1a0dab;
+    font-size: 32px;
     margin-bottom: 5px;
 }
 
 header p {
     color: #5f6368;
+    font-size: 14px;
 }
 
-/* Search Form */
 #search-form {
     display: flex;
     margin-bottom: 40px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    border: 1px solid #dfe1e5;
     border-radius: 24px;
     overflow: hidden;
-    background-color: white;
-    border: 1px solid #dadce0;
+    box-shadow: 0 1px 6px rgba(32,33,36,.28);
 }
 
 #search-input {
@@ -53,7 +54,7 @@ header p {
     background-color: #4285f4;
     color: white;
     border: none;
-    padding: 12px 20px;
+    padding: 10px 20px;
     cursor: pointer;
     font-size: 16px;
     transition: background-color 0.3s;
@@ -63,76 +64,56 @@ header p {
     background-color: #357ae8;
 }
 
-/* Results */
-#results-container {
-    padding-top: 10px;
-}
-
-.result-item {
-    margin-bottom: 30px;
-    padding: 15px;
+/* Results Styling */
+.search-result {
+    margin-bottom: 25px;
+    padding-bottom: 15px;
     border-bottom: 1px solid #eee;
-}
-
-.result-title a {
-    font-size: 20px;
-    color: #1a0dab; /* Google blue */
-    text-decoration: none;
-    margin-bottom: 4px;
-}
-
-.result-title a:visited {
-    color: #609; /* Google purple */
 }
 
 .result-url {
     font-size: 14px;
-    color: #006621; /* Google green */
-    margin-bottom: 6px;
-    word-wrap: break-word;
+    color: #202124;
+    margin-bottom: 2px;
+}
+
+.result-url a {
+    color: #006621;
+    text-decoration: none;
+}
+
+.result-title {
+    font-size: 20px;
+    margin: 0 0 4px 0;
+}
+
+.result-title a {
+    color: #1a0dab;
+    text-decoration: none;
 }
 
 .result-snippet {
-    font-size: 14px;
+    font-size: 13px;
     color: #545454;
     margin-top: 5px;
 }
 
-.result-charset {
+.result-meta {
     font-size: 12px;
-    color: #777;
-    margin-top: 8px;
-    display: block;
-    font-style: italic;
-}
-
-/* Utility */
-.hidden {
-    display: none !important;
+    color: #70757a;
+    margin-top: 5px;
 }
 
 #loading {
     text-align: center;
     padding: 20px;
-    font-style: italic;
-    color: #5f6368;
-}
-
-.error {
-    background-color: #fce8e6;
-    border: 1px solid #fbbd0e;
-    color: #d93025;
-    padding: 10px;
-    margin-bottom: 20px;
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    color: #856404;
     border-radius: 4px;
-    text-align: center;
+    margin-bottom: 20px;
 }
 
-footer {
-    text-align: center;
-    margin-top: 50px;
-    padding: 10px 0;
-    border-top: 1px solid #eee;
-    color: #9aa0a6;
-    font-size: 12px;
+.hidden {
+    display: none !important;
 }
